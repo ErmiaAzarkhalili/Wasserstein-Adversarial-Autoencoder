@@ -97,8 +97,8 @@ class Model():
         def f2():
             return tf.train.exponential_decay(self.init_learning_rate, global_step, decay_step[0], decay_rate, staircase=True)
         
-        pred = tf.greater(global_step,tf.Variable(tf.int(decay_step[0])))
-        pred1 = tf.greater(global_step,tf.Variable(tf.int(decay_step[1])))
+        pred = tf.greater(global_step,tf.Variable(tf.int32(decay_step[0])))
+        pred1 = tf.greater(global_step,tf.Variable(tf.int32(decay_step[1])))
         self.learning_rate = tf.cond(pred, lambda: tf.cond(pred1, f0, f1), f2)
 
         self.saver = tf.train.Saver()
