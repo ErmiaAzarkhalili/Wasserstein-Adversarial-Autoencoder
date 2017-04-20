@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import imageio
 
-f = h5py.File('fonts.hdf5', 'r')
+f = h5py.File('../fonts.hdf5', 'r')
 dataset = f['fonts']
 
 input_dim = dataset.shape[2]*dataset.shape[3]
