@@ -127,7 +127,7 @@ class Model():
         gen_loss, _ = self.sess.run([self.gen_loss, self.reg_gen], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
         if (self.niter % 100 == 0):
             print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
-        if (self.niter % 10 == 0):
+        if (self.niter % 1000 == 0):
             self.saver.save(self.sess, "../temp/model.cpkt")
             image_capture(epoch, self.niter)
         self.niter = self.niter + 1
