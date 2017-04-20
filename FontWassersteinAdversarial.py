@@ -13,7 +13,7 @@ dataset = f['fonts']
 
 input_dim = dataset.shape[2]*dataset.shape[3]
 char_dim = dataset.shape[1]
-font_dim = int(np.floor(dataset.shape[0]/100))
+font_dim = dataset.shape[0]
 
 batch_size = 100
 train_iter = int(font_dim*char_dim/batch_size)
@@ -30,14 +30,18 @@ decay_step = np.multiply(train_iter,decay_epochs)
 init_learning_rate = 3e-4
 decay_rate = .25
 lambduh = 10
+ndisc = 5
+
+path = "/tmp/model.cpkt"
 
 class Model():
-    def __init__(self, sess, data, nEpochs, init_learning_rate, lambduh):
+    def __init__(self, sess, data, nEpochs, init_learning_rate, lambduh, ndisc):
         self.sess = sess
         self.data = data
         self.nEpochs = nEpochs
         self.init_learning_rate = init_learning_rate
         self.lambduh = lambduh
+        self.ndisc = ndisc
         self.build_model()
     
     def build_model(self):
@@ -54,9 +58,6 @@ class Model():
             self.dec = slim.fully_connected(self.latent, hidden_dim_2, scope='dec1') + slim.fully_connected(self.labels, hidden_dim_2, scope='dec2')
             self.dec = slim.fully_connected(self.dec, hidden_dim_1, scope='dec3')
             self.dec = slim.fully_connected(self.dec, input_dim, activation_fn=tf.nn.sigmoid, scope='dec4')
-            self.gen = slim.fully_connected(self.sample, hidden_dim_2, scope='dec1') + slim.fully_connected(self.labels, hidden_dim_2, scope='dec2')
-            self.gen = slim.fully_connected(self.gen, hidden_dim_1, scope='dec3')
-            self.gen = slim.fully_connected(self.gen, input_dim, activation_fn=tf.nn.sigmoid, scope='dec4')
             self.disc_noise = tf.random_normal([tf.shape(self.x)[0],latent_dim])*latent_stdev
             self.disc = slim.fully_connected(self.latent, hidden_dim_2, scope='disc1')
             self.disc = slim.fully_connected(self.disc, hidden_dim_1, scope='disc2')
@@ -70,7 +71,9 @@ class Model():
             self.interp_disc = slim.fully_connected(self.interpolates, hidden_dim_2, scope='disc1')
             self.interp_disc = slim.fully_connected(self.interp_disc, hidden_dim_1, scope='disc2')
             self.interp_disc = slim.fully_connected(self.interp_disc, 1, activation_fn=None, scope='disc3')
-            
+            self.gen = slim.fully_connected(self.sample, hidden_dim_2, scope='dec1') + slim.fully_connected(self.labels, hidden_dim_2, scope='dec2')
+            self.gen = slim.fully_connected(self.gen, hidden_dim_1, scope='dec3')
+            self.gen = slim.fully_connected(self.gen, input_dim, activation_fn=tf.nn.sigmoid, scope='dec4')         
 
         self.MSE = tf.losses.mean_squared_error(self.x, self.dec)
         self.disc_loss = tf.reduce_mean(self.disc)
@@ -81,7 +84,7 @@ class Model():
         self.disc_loss += self.lambduh*self.gradient_penalty
         self.gen_loss = -tf.reduce_mean(self.disc)
     
-    def train_init(self):
+    def train_init(self, path):
         enc_variables = slim.get_model_variables('enc')
         dec_variables = slim.get_model_variables('dec')
         disc_variables = slim.get_model_variables('disc')
@@ -97,36 +100,39 @@ class Model():
         pred = tf.greater(global_step,tf.Variable(decay_step[0]))
         pred1 = tf.greater(global_step,tf.Variable(decay_step[1]))
         self.learning_rate = tf.cond(pred, lambda: tf.cond(pred1, f0, f1), f2)
+
+        self.saver = tf.train.Saver()
             
-        self.optim = (
-##            tf.train.MomentumOptimizer(self.learning_rate, .9, name='Rec_enc')
-##            .minimize(self.MSE, var_list=enc_variables),
-##            tf.train.MomentumOptimizer(self.learning_rate, .9, name='Rec_dec')
-##            .minimize(self.MSE, var_list=dec_variables),
-##            tf.train.MomentumOptimizer(self.learning_rate*10, .1, name='Reg_disc')
-##            .minimize(self.disc_loss, var_list=disc_variables),
-##            tf.train.MomentumOptimizer(self.learning_rate*10, .1, name='Reg_gen')
-##            .minimize(self.gen_loss, var_list=enc_variables, global_step=global_step)
-            tf.train.AdamOptimizer(self.learning_rate, .9, .9, name='Rec_enc')
-            .minimize(self.MSE, var_list=enc_variables),
-            tf.train.AdamOptimizer(self.learning_rate, .9, .9, name='Rec_dec')
-            .minimize(self.MSE, var_list=dec_variables),
-            tf.train.AdamOptimizer(self.learning_rate*10, .1, .9, name='Reg_disc')
-            .minimize(self.disc_loss, var_list=disc_variables),
-            tf.train.AdamOptimizer(self.learning_rate*10, .1, .9, name='Reg_gen')
-            .minimize(self.gen_loss, var_list=enc_variables, global_step=global_step)
-            )
-        self.sess.run(tf.global_variables_initializer())
+        self.rec_enc = tf.train.AdamOptimizer(self.learning_rate, .9, .9, name='Rec_enc').minimize(self.MSE, var_list=enc_variables)
+        self.rec_dec = tf.train.AdamOptimizer(self.learning_rate, .9, .9, name='Rec_dec').minimize(self.MSE, var_list=dec_variables),
+        self.reg_disc = tf.train.AdamOptimizer(self.learning_rate*10, .1, .9, name='Reg_disc').minimize(self.disc_loss, var_list=disc_variables),
+        self.reg_gen = tf.train.AdamOptimizer(self.learning_rate*10, .1, .9, name='Reg_gen').minimize(self.gen_loss, var_list=enc_variables, global_step=global_step)
+
+        if not path:
+            self.sess.run(tf.global_variables_initializer())
+            print('Initialization complete.')
+        else:
+            self.saver.restore(self.sess, path)
+            print('Model loaded.')
 
     def train_iter(self, x, y, epoch):
-        MSE, disc_loss, gen_loss, _ = self.sess.run([self.MSE, self.disc_loss, self.gen_loss, self.optim],
-                                          feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
-        print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
+        _ = self.sess.run([self.rec_enc], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
+        MSE, _ = self.sess.run([self.MSE, self.rec_dec], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
+        for _ in range(self.ndisc):
+            disc_loss, _ = self.sess.run([self.disc_loss, self.reg_disc], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
+        gen_loss, _ = self.sess.run([self.gen_loss, self.reg_gen], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
+        if (self.niter % 100 == 0):
+            print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
+        self.niter = self.niter + 1
 
     def train(self):
         for i in range(self.nEpochs):
+            self.niter = 1
             for x, y in self.data():
                 self.train_iter(x, y, i)
+            if (i % 5 == 0):
+                self.saver.save(self.sess, "/tmp/model.cpkt")
+                image_capture()
                 
     def infer(self, x, y, z, gen=False):
         if gen:
@@ -148,8 +154,8 @@ def data():
 
 tf.set_random_seed(13223)
 sess = tf.Session()
-model = Model(sess, data, num_epochs, init_learning_rate, lambduh)
-model.train_init()
+model = Model(sess, data, num_epochs, init_learning_rate, lambduh, ndisc)
+model.train_init(None)
 model.train()
 
 for j in range(1):
@@ -158,7 +164,6 @@ for j in range(1):
     for i in range(char_dim):
         label[i][i] = 1
         out.append(model.infer(np.reshape(dataset[j][i].flatten()*1/255,(1,input_dim)),np.reshape(label[i],(1,char_dim)),np.zeros([1,latent_dim]),gen=False))
-##        out.append(model.infer(np.zeros(1,input_dim),np.reshape(label[i],(1,char_dim)),np.zeros([1,latent_dim]),gen=False))
     out = np.concatenate(out/np.max(out))
     f, a = plt.subplots(8, 8, figsize=(10, 10))
     g, b = plt.subplots(8, 8, figsize=(10, 10))
@@ -168,7 +173,23 @@ for j in range(1):
     f.show()
     g.show()
 
-for _ in range(1):
+def image_capture():
+    images = []
+    for j in range(64):
+        thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
+        thinglabel = np.zeros([1,char_dim])
+        thinglabel[0,j % 62] = 1
+        images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
+    images = np.concatenate(images)
+    h, c = plt.subplots(8, 8, figsize=(10, 10))
+    h.subplots_adjust(wspace=0,hspace=0)
+    for i in range(64):
+        c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+        c[int(np.floor(i/8))][i % 8].axis('off')
+    savename = str('font_epoch' + repr(j) + '.png')
+    h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
+
+def image_capture_fon():    
     images = []
     for i in range(1):
         thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
@@ -182,11 +203,10 @@ for _ in range(1):
     for i in range(62):
         c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
         c[int(np.floor(i/8))][i % 8].axis('off')
-    h.savefig('plot.pdf', format='pdf', bbox_inches='tight')
+    h.savefig('plot.pdf', format='pdf', bbox_inches='tight', pad_inches=0, dpi=50)
     h.show()
 
-for _ in range(1):
-    matplotlib.use('Agg')
+def gif_capture():
     gif_len = 60
     thingkern0 = np.random.normal(size=[1,latent_dim])*latent_stdev
     thingkern1 = np.random.normal(size=[1,latent_dim])*latent_stdev
