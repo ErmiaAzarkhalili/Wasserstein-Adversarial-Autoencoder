@@ -126,6 +126,9 @@ class Model():
         gen_loss, _ = self.sess.run([self.gen_loss, self.reg_gen], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
         if (self.niter % 100 == 0):
             print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
+        if (self.niter % 1000 == 0):
+            self.saver.save(self.sess, "/tmp/model.cpkt")
+            image_capture()
         self.niter = self.niter + 1
         sys.stdout.flush()
 
@@ -134,9 +137,6 @@ class Model():
             self.niter = 1
             for x, y in self.data():
                 self.train_iter(x, y, i)
-            if (i % 5 == 0):
-                self.saver.save(self.sess, "/tmp/model.cpkt")
-                image_capture()
                 
     def infer(self, x, y, z, gen=False):
         if gen:
