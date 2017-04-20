@@ -110,10 +110,10 @@ class Model():
 
         if not path:
             self.sess.run(tf.global_variables_initializer())
-            print('Initialization complete.')
+            sys.stdout.write('Initialization complete.')
         else:
             self.saver.restore(self.sess, path)
-            print('Model loaded.')
+            sys.stdout.write('Model loaded.')
 
     def train_iter(self, x, y, epoch):
         _ = self.sess.run([self.rec_enc], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
@@ -122,7 +122,7 @@ class Model():
             disc_loss, _ = self.sess.run([self.disc_loss, self.reg_disc], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
         gen_loss, _ = self.sess.run([self.gen_loss, self.reg_gen], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
         if (self.niter % 100 == 0):
-            print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
+            sys.stdout.write('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
         self.niter = self.niter + 1
 
     def train(self):
@@ -207,7 +207,7 @@ def image_capture_fon():
     h.show()
 
 def gif_capture():
-    gif_len = 60
+    gif_len = 100
     thingkern0 = np.random.normal(size=[1,latent_dim])*latent_stdev
     thingkern1 = np.random.normal(size=[1,latent_dim])*latent_stdev
     for k in range(gif_len):
