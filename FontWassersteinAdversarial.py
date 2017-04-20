@@ -24,11 +24,11 @@ hidden_dim_2 = 5000
 latent_dim = 15
 latent_stdev = 5
 num_images_per_dim = 25
-num_epochs = 2000
+num_epochs = 50000
 decay_epochs = [5000, 25000]
 decay_step = np.multiply(train_iter,decay_epochs)
 init_learning_rate = 3e-4
-decay_rate = .25
+decay_rate = .5
 lambduh = 10
 ndisc = 5
 
@@ -97,8 +97,8 @@ class Model():
         def f2():
             return tf.train.exponential_decay(self.init_learning_rate, global_step, decay_step[0], decay_rate, staircase=True)
         
-        pred = tf.greater(global_step,tf.Variable(decay_step[0]))
-        pred1 = tf.greater(global_step,tf.Variable(decay_step[1]))
+        pred = tf.greater(global_step,tf.Variable(tf.int(decay_step[0])))
+        pred1 = tf.greater(global_step,tf.Variable(tf.int(decay_step[1])))
         self.learning_rate = tf.cond(pred, lambda: tf.cond(pred1, f0, f1), f2)
 
         self.saver = tf.train.Saver()
