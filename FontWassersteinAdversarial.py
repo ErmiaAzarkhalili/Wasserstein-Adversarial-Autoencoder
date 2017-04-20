@@ -34,7 +34,7 @@ lambduh = 10
 ndisc = 5
 
 path = None
-#path = "/tmp/model.cpkt"
+#path = "/temp/model.cpkt"
 
 class Model():
     def __init__(self, sess, data, nEpochs, init_learning_rate, lambduh, ndisc):
@@ -127,7 +127,7 @@ class Model():
         if (self.niter % 100 == 0):
             print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
         if (self.niter % 1000 == 0):
-            self.saver.save(self.sess, "/tmp/model.cpkt")
+            self.saver.save(self.sess, "/temp/model.cpkt")
             image_capture(epoch, self.niter)
         self.niter = self.niter + 1
         sys.stdout.flush()
@@ -137,6 +137,9 @@ class Model():
             self.niter = 1
             for x, y in self.data():
                 self.train_iter(x, y, i)
+            image_capture_fon(epoch)
+            if (i % 5 == 0):
+                gif_capture(epoch)
                 
     def infer(self, x, y, z, gen=False):
         if gen:
@@ -155,6 +158,67 @@ def data():
             batch[z] = dataset[int(np.floor(point/char_dim))][point % char_dim].flatten()*1/255
             label[z][point % char_dim] = 1
         yield batch, label
+
+def image_capture(epoch, niter):
+    images = []
+    for j in range(64):
+        thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
+        thinglabel = np.zeros([1,char_dim])
+        thinglabel[0,j % 62] = 1
+        images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
+    images = np.concatenate(images)
+    h, c = plt.subplots(8, 8, figsize=(10, 10))
+    h.subplots_adjust(wspace=0,hspace=0)
+    for i in range(64):
+        c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+        c[int(np.floor(i/8))][i % 8].axis('off')
+    savename = str('/images/rand/fonts' + repr(epoch) + '_' + repr(niter) + '.png')
+    h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
+
+def image_capture_fon(epoch):    
+    for i in range(10):
+        images = []
+        h, c = plt.subplots(8, 8, figsize=(10, 10))
+        h.subplots_adjust(wspace=0,hspace=0)
+        for i in range(64):
+            c[int(np.floor(i/8))][i % 8].axis('off')
+        thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
+        for j in range(62):
+            thinglabel = np.zeros([1,char_dim])
+            thinglabel[0,j] = 1
+            images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
+        images = np.concatenate(images)
+        for i in range(62):
+            c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+        savename = str('/images/full/fonts' + repr(epoch) + '_' + repr(i) + '.png')
+        h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
+
+def gif_capture(epoch):
+    gif_len = 100
+    thingkern0 = np.random.normal(size=[1,latent_dim])*latent_stdev
+    thingkern1 = np.random.normal(size=[1,latent_dim])*latent_stdev
+    for k in range(gif_len):
+        images = []
+        if (k % 15) == 0:
+            h, c = plt.subplots(8, 8, figsize=(10, 10))
+            h.subplots_adjust(wspace=0,hspace=0)
+            for i in range(64):
+                c[int(np.floor(i/8))][i % 8].axis('off')
+        thingkern = thingkern0 + (thingkern1 - thingkern0)*k/(gif_len-1)
+        for j in range(char_dim):
+            thinglabel = np.zeros([1,char_dim])
+            thinglabel[0,j] = 1
+            images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
+        images = np.concatenate(images)
+        for i in range(char_dim):
+            c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+        savename = str('/temp/' + repr(k) + '.png')
+        h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
+    gifs = []
+    for k in range(gif_len):
+        readname = str('/temp/' + repr(k) + '.png')
+        gifs.append(imageio.imread(readname))
+    imageio.mimsave('/gifs/fonts' + repr(epoch) + '.gif', gifs)        
 
 tf.set_random_seed(13223)
 sess = tf.Session()
@@ -176,63 +240,3 @@ for j in range(1):
         a[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-out[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
     f.show()
     g.show()
-
-def image_capture(epoch, niter):
-    images = []
-    for j in range(64):
-        thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
-        thinglabel = np.zeros([1,char_dim])
-        thinglabel[0,j % 62] = 1
-        images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
-    images = np.concatenate(images)
-    h, c = plt.subplots(8, 8, figsize=(10, 10))
-    h.subplots_adjust(wspace=0,hspace=0)
-    for i in range(64):
-        c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
-        c[int(np.floor(i/8))][i % 8].axis('off')
-    savename = str('font_epoch' + repr(epoch) + '_' + repr(niter) + '.png')
-    h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
-
-def image_capture_fon():    
-    images = []
-    for i in range(1):
-        thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
-        for j in range(62):
-            thinglabel = np.zeros([1,char_dim])
-            thinglabel[0,j] = 1
-            images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
-    images = np.concatenate(images)
-    h, c = plt.subplots(8, 8, figsize=(10, 10))
-    h.subplots_adjust(wspace=0,hspace=0)
-    for i in range(62):
-        c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
-        c[int(np.floor(i/8))][i % 8].axis('off')
-    h.savefig('plot.pdf', format='pdf', bbox_inches='tight', pad_inches=0, dpi=50)
-    h.show()
-
-def gif_capture():
-    gif_len = 100
-    thingkern0 = np.random.normal(size=[1,latent_dim])*latent_stdev
-    thingkern1 = np.random.normal(size=[1,latent_dim])*latent_stdev
-    for k in range(gif_len):
-        images = []
-        if (k % 15) == 0:
-            h, c = plt.subplots(8, 8, figsize=(10, 10))
-            h.subplots_adjust(wspace=0,hspace=0)
-            for i in range(64):
-                c[int(np.floor(i/8))][i % 8].axis('off')
-        thingkern = thingkern0 + (thingkern1 - thingkern0)*k/(gif_len-1)
-        for j in range(char_dim):
-            thinglabel = np.zeros([1,char_dim])
-            thinglabel[0,j] = 1
-            images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
-        images = np.concatenate(images)
-        for i in range(char_dim):
-            c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
-        savename = str('temp' + repr(k) + '.png')
-        h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
-    gifs = []
-    for k in range(gif_len):
-        readname = str('temp' + repr(k) + '.png')
-        gifs.append(imageio.imread(readname))
-    imageio.mimsave('cancer.gif', gifs)
