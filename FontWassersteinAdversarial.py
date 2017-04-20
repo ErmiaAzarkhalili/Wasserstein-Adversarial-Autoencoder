@@ -34,7 +34,7 @@ lambduh = 10
 ndisc = 5
 
 path = None
-#path = "/temp/model.cpkt"
+#path = "../temp/model.cpkt"
 
 class Model():
     def __init__(self, sess, data, nEpochs, init_learning_rate, lambduh, ndisc):
@@ -127,7 +127,7 @@ class Model():
         if (self.niter % 100 == 0):
             print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
         if (self.niter % 10 == 0):
-            self.saver.save(self.sess, "/temp/model.cpkt")
+            self.saver.save(self.sess, "../temp/model.cpkt")
             image_capture(epoch, self.niter)
         self.niter = self.niter + 1
         sys.stdout.flush()
@@ -172,7 +172,7 @@ def image_capture(epoch, niter):
     for i in range(64):
         c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
         c[int(np.floor(i/8))][i % 8].axis('off')
-    savename = str('/images/rand/fonts' + repr(epoch) + '_' + repr(niter) + '.png')
+    savename = str('../images/rand/fonts' + repr(epoch) + '_' + repr(niter) + '.png')
     h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
 
 def image_capture_fon(epoch):    
@@ -190,7 +190,7 @@ def image_capture_fon(epoch):
         images = np.concatenate(images)
         for i in range(62):
             c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
-        savename = str('/images/full/fonts' + repr(epoch) + '_' + repr(i) + '.png')
+        savename = str('../images/full/fonts' + repr(epoch) + '_' + repr(i) + '.png')
         h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
 
 def gif_capture(epoch):
@@ -212,13 +212,13 @@ def gif_capture(epoch):
         images = np.concatenate(images)
         for i in range(char_dim):
             c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
-        savename = str('/temp/' + repr(k) + '.png')
+        savename = str('../temp/' + repr(k) + '.png')
         h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
     gifs = []
     for k in range(gif_len):
-        readname = str('/temp/' + repr(k) + '.png')
+        readname = str('../temp/' + repr(k) + '.png')
         gifs.append(imageio.imread(readname))
-    imageio.mimsave('/gifs/fonts' + repr(epoch) + '.gif', gifs)        
+    imageio.mimsave('../gifs/fonts' + repr(epoch) + '.gif', gifs)        
 
 tf.set_random_seed(13223)
 sess = tf.Session()
