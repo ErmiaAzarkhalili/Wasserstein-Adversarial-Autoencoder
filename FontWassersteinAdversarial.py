@@ -128,7 +128,7 @@ class Model():
             print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
         if (self.niter % 1000 == 0):
             self.saver.save(self.sess, "/tmp/model.cpkt")
-            image_capture()
+            image_capture(epoch, self.niter)
         self.niter = self.niter + 1
         sys.stdout.flush()
 
@@ -177,7 +177,7 @@ for j in range(1):
     f.show()
     g.show()
 
-def image_capture():
+def image_capture(epoch, niter):
     images = []
     for j in range(64):
         thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
@@ -190,7 +190,7 @@ def image_capture():
     for i in range(64):
         c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
         c[int(np.floor(i/8))][i % 8].axis('off')
-    savename = str('font_epoch' + repr(j) + '.png')
+    savename = str('font_epoch' + repr(epoch) + '_' + repr(niter) + '.png')
     h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
 
 def image_capture_fon():    
