@@ -111,10 +111,11 @@ class Model():
 
         if not path:
             self.sess.run(tf.global_variables_initializer())
-            sys.stdout.write('Initialization complete.')
+            print('Initialization complete.')
         else:
             self.saver.restore(self.sess, path)
-            sys.stdout.write('Model loaded.')
+            print('Model loaded.')
+        sys.stdout.flush()
 
     def train_iter(self, x, y, epoch):
         _ = self.sess.run([self.rec_enc], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
@@ -123,8 +124,9 @@ class Model():
             disc_loss, _ = self.sess.run([self.disc_loss, self.reg_disc], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
         gen_loss, _ = self.sess.run([self.gen_loss, self.reg_gen], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
         if (self.niter % 100 == 0):
-            sys.stdout.write('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
+            print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
         self.niter = self.niter + 1
+        sys.stdout.flush()
 
     def train(self):
         for i in range(self.nEpochs):
