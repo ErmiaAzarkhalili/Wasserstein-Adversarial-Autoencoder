@@ -1,4 +1,4 @@
-#JAERYUNG SONG MIDTERM
+#JAERYUNG SONG FINAL
 
 import sys
 import h5py
@@ -22,7 +22,7 @@ train_iter = int(font_dim*char_dim/batch_size)
 hidden_dim_1 = 5000
 hidden_dim_2 = 5000
 
-latent_dim = 15
+latent_dim = 100
 latent_stdev = 5
 num_images_per_dim = 25
 num_epochs = 50000
@@ -33,7 +33,8 @@ decay_rate = .5
 lambduh = 10
 ndisc = 5
 
-path = "/tmp/model.cpkt"
+path = None
+#path = "/tmp/model.cpkt"
 
 class Model():
     def __init__(self, sess, data, nEpochs, init_learning_rate, lambduh, ndisc):
@@ -158,7 +159,7 @@ def data():
 tf.set_random_seed(13223)
 sess = tf.Session()
 model = Model(sess, data, num_epochs, init_learning_rate, lambduh, ndisc)
-model.train_init(None)
+model.train_init(path)
 model.train()
 
 for j in range(1):
