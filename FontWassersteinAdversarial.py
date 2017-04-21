@@ -140,7 +140,7 @@ class Model():
                 self.train_iter(x, y, i)
             image_capture_fon(i)
             if (i % 5 == 0):
-                gif_capture(epoch)
+                gif_capture(i)
                 
     def infer(self, x, y, z, gen=False):
         if gen:
