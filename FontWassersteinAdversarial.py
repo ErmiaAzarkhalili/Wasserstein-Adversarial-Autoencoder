@@ -114,7 +114,7 @@ class Model():
         if not path:
             self.sess.run(tf.global_variables_initializer())
             print('Initialization complete.')
-        else:
+        elif isinstance(path, str):
             self.saver.restore(self.sess, path)
             print('Model loaded.')
         sys.stdout.flush()
