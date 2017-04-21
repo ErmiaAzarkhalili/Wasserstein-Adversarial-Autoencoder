@@ -34,8 +34,8 @@ decay_rate = .5
 lambduh = 10
 ndisc = 5
 
-path = None
-#path = "../temp/model.cpkt"
+#path = None
+path = "../temp/model.cpkt"
 
 class Model():
     def __init__(self, sess, data, nEpochs, init_learning_rate, lambduh, ndisc):
