@@ -138,7 +138,7 @@ class Model():
             self.niter = 1
             for x, y in self.data():
                 self.train_iter(x, y, i)
-            image_capture_fon(epoch)
+            image_capture_fon(i)
             if (i % 5 == 0):
                 gif_capture(epoch)
                 
@@ -175,6 +175,7 @@ def image_capture(epoch, niter):
         c[int(np.floor(i/8))][i % 8].axis('off')
     savename = str('../images/rand/fonts' + repr(epoch) + '_' + repr(niter) + '.png')
     h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
+    plt.close("all")
 
 def image_capture_fon(epoch):    
     for i in range(10):
@@ -193,6 +194,7 @@ def image_capture_fon(epoch):
             c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
         savename = str('../images/full/fonts' + repr(epoch) + '_' + repr(i) + '.png')
         h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
+    plt.close("all")
 
 def gif_capture(epoch):
     gif_len = 100
