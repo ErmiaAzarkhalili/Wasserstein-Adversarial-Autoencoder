@@ -34,8 +34,8 @@ decay_rate = .5
 lambduh = 10
 ndisc = 5
 
-#path = None
-path = "../temp/model.cpkt"
+path = None
+#path = "../temp/model.cpkt"
 
 class Model():
     def __init__(self, sess, data, nEpochs, init_learning_rate, lambduh, ndisc):
@@ -165,7 +165,7 @@ def image_capture(epoch, niter):
     for j in range(64):
         thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
         thinglabel = np.zeros([1,char_dim])
-        thinglabel[0,j % 62] = 1
+        thinglabel[0,j % char_dim] = 1
         images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
     images = np.concatenate(images)
     h, c = plt.subplots(8, 8, figsize=(10, 10))
@@ -185,12 +185,12 @@ def image_capture_fon(epoch):
         for i in range(64):
             c[int(np.floor(i/8))][i % 8].axis('off')
         thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
-        for j in range(62):
+        for j in range(char_dim):
             thinglabel = np.zeros([1,char_dim])
             thinglabel[0,j] = 1
             images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
         images = np.concatenate(images)
-        for i in range(62):
+        for i in range(char_dim):
             c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
         savename = str('../images/full/fonts' + repr(epoch) + '_' + repr(i) + '.png')
         h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
@@ -227,19 +227,20 @@ tf.set_random_seed(13223)
 sess = tf.Session()
 model = Model(sess, data, num_epochs, init_learning_rate, lambduh, ndisc)
 model.train_init(path)
-model.train()
+if not path:
+    model.train()
 
-for j in range(1):
+def reconstructor(font_num):
     out = []
     label = np.zeros((char_dim, char_dim), dtype=np.float32)
     for i in range(char_dim):
         label[i][i] = 1
-        out.append(model.infer(np.reshape(dataset[j][i].flatten()*1/255,(1,input_dim)),np.reshape(label[i],(1,char_dim)),np.zeros([1,latent_dim]),gen=False))
+        out.append(model.infer(np.reshape(dataset[font_num][i].flatten()*1/255,(1,input_dim)),np.reshape(label[i],(1,char_dim)),np.zeros([1,latent_dim]),gen=False))
     out = np.concatenate(out/np.max(out))
     f, a = plt.subplots(8, 8, figsize=(10, 10))
     g, b = plt.subplots(8, 8, figsize=(10, 10))
     for i in range(char_dim):
-        b[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-dataset[j][i]*1/255, (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+        b[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-dataset[font_num][i]*1/255, (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
         a[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-out[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
     f.show()
     g.show()
