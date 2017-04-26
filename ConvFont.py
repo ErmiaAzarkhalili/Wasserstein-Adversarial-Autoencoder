@@ -13,15 +13,20 @@ import imageio
 f = h5py.File('../../fonts.hdf5', 'r')
 dataset = f['fonts']
 
-input_dim = dataset.shape[2]*dataset.shape[3]
+input_dim_1 = dataset.shape[2]
+input_dim_2 = dataset.shape[3]
+input_dim = input_dim_1*input_dim_2
 char_dim = dataset.shape[1]
 font_dim = dataset.shape[0]
+channels = 1
 
 batch_size = 100
 train_iter = int(font_dim*char_dim/batch_size)
 
-hidden_dim_1 = 1000
-hidden_dim_2 = 500
+hidden_dim_1 = 32
+hidden_dim_2 = 128
+kernel = [9, 9]
+reconst_dim = (input_dim_1-(kernel[0]-1)*2)*(input_dim_2-(kernel[1]-1)*2)*hidden_dim_2
 
 latent_dim = 100
 latent_stdev = 5
@@ -48,38 +53,41 @@ class Model():
         self.build_model()
     
     def build_model(self):
-        self.x = tf.placeholder(tf.float32, shape=[None,input_dim])
+        self.x = tf.placeholder(tf.float32, shape=[None,input_dim_1,input_dim_2,channels])
         self.labels = tf.placeholder(tf.float32, shape=[None,char_dim])
-        self.sample = tf.placeholder(tf.float32, shape=[1,latent_dim])
+        self.sample = tf.placeholder(tf.float32, shape=[1,latent_dim]) 
         
-        self.x_reshape = tf.reshape(self.x, [-1, dataset.shape[1], dataset.shape[2], 1]) 
-        
-        kernel = [3, 3]
-        with slim.arg_scope([slim.fully_connected],
+        with slim.arg_scope([slim.conv2d, slim.convolution2d_transpose, slim.fully_connected],
                       weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
-            self.enc = slim.convolution(self.x, hidden_dim_1, kernel, scope='enc1')
-            self.enc = slim.convolution(self.enc, hidden_dim_2, kernel, scope='enc2')
-            self.latent = slim.fully_connected(self.enc, latent_dim, activation_fn=None, scope='enc3')
-            self.dec = slim.fully_connected(self.latent, hidden_dim_2, scope='dec1') + slim.fully_connected(self.labels, hidden_dim_2, scope='dec2')
-            self.dec = slim.convolution2d_transpose(self.dec, hidden_dim_1, kernel, scope='dec3')
-            self.dec = slim.convolution2d_transpose(self.dec, input_dim, kernel, activation_fn=tf.nn.sigmoid, scope='dec4')
-            self.disc_noise = tf.random_normal([tf.shape(self.x)[0],latent_dim])*latent_stdev
-            self.disc = slim.fully_connected(self.latent, hidden_dim_2, scope='disc1')
-            self.disc = slim.convolution2d_transpose(self.disc, hidden_dim_1, kernel, scope='disc2')
-            self.disc = slim.convolution2d_transpose(self.disc, 1, kernel, activation_fn=None, scope='disc3')
-            self.noise = slim.fully_connected(self.disc_noise, hidden_dim_2, scope='disc1')
-            self.noise = slim.convolution2d_transpose(self.noise, hidden_dim_1, kernel, scope='disc2')
-            self.noise = slim.convolution2d_transpose(self.noise, 1, kernel, activation_fn=None, scope='disc3')
-            self.alpha = tf.random_uniform(shape=[tf.shape(self.x)[0],1], minval=0.,maxval=1.)
-            self.difference = self.latent - self.disc_noise
-            self.interpolates = self.disc_noise + (self.alpha*self.difference)
-            self.interp_disc = slim.fully_connected(self.interpolates, hidden_dim_2, scope='disc1')
-            self.interp_disc = slim.convolution2d_transpose(self.interp_disc, hidden_dim_1, kernel, scope='disc2')
-            self.interp_disc = slim.convolution2d_transpose(self.interp_disc, 1, kernel, activation_fn=None, scope='disc3')
-            self.gen = slim.fully_connected(self.sample, hidden_dim_2, scope='dec1') + slim.fully_connected(self.labels, hidden_dim_2, scope='dec2')
-            self.gen = slim.convolution2d_transpose(self.gen, hidden_dim_1, kernel, scope='dec3')
-            self.gen = slim.convolution2d_transpose(self.gen, input_dim, kernel, activation_fn=tf.nn.sigmoid, scope='dec4')         
+            with slim.arg_scope([slim.conv2d, slim.convolution2d_transpose], kernel_size=kernel, stride=1, padding='VALID'):                                
+                self.enc = slim.conv2d(self.x, hidden_dim_1, scope='enc1')
+                self.enc = slim.conv2d(self.enc, hidden_dim_2, scope='enc2')
+                self.latent = slim.fully_connected(self.enc, latent_dim, activation_fn=None, scope='enc3')
+                self.dec = slim.fully_connected(self.latent, reconst_dim, scope='dec1') + slim.fully_connected(self.labels, reconst_dim, scope='dec2')
+                self.dec = tf.reshape(self.dec, tf.shape(self.enc))
+                self.dec = slim.convolution2d_transpose(self.dec, hidden_dim_1, scope='dec3')
+                self.dec = slim.convolution2d_transpose(self.dec, channels, activation_fn=tf.nn.sigmoid, scope='dec4')
+                self.disc_noise = tf.random_normal([tf.shape(self.x)[0],latent_dim])*latent_stdev
+                self.disc = slim.fully_connected(self.latent, reconst_dim, scope='disc1')
+                self.disc = tf.reshape(self.disc, tf.shape(self.enc))
+                self.disc = slim.convolution2d_transpose(self.disc, hidden_dim_1, scope='disc2')
+                self.disc = slim.convolution2d_transpose(self.disc, 1, activation_fn=None, scope='disc3')
+                self.noise = slim.fully_connected(self.disc_noise, reconst_dim, scope='disc1')
+                self.noise = tf.reshape(self.noise, tf.shape(self.enc))
+                self.noise = slim.convolution2d_transpose(self.noise, hidden_dim_1, scope='disc2')
+                self.noise = slim.convolution2d_transpose(self.noise, 1, activation_fn=None, scope='disc3')
+                self.alpha = tf.random_uniform(shape=[tf.shape(self.x)[0],1], minval=0.,maxval=1.)
+                self.difference = self.latent - self.disc_noise
+                self.interpolates = self.disc_noise + (self.alpha*self.difference)
+                self.interp_disc = slim.fully_connected(self.interpolates, reconst_dim, scope='disc1')
+                self.interp_disc = tf.reshape(self.interp_disc, tf.shape(self.enc))
+                self.interp_disc = slim.convolution2d_transpose(self.interp_disc, hidden_dim_1, scope='disc2')
+                self.interp_disc = slim.convolution2d_transpose(self.interp_disc, 1, activation_fn=None, scope='disc3')
+                self.gen = slim.fully_connected(self.sample, reconst_dim, scope='dec1') + slim.fully_connected(self.labels, reconst_dim, scope='dec2')
+                self.gen = tf.reshape(self.gen, tf.shape(self.enc))
+                self.gen = slim.convolution2d_transpose(self.gen, hidden_dim_1, scope='dec3')
+                self.gen = slim.convolution2d_transpose(self.gen, channels, activation_fn=tf.nn.sigmoid, scope='dec4')         
 
         self.MSE = tf.losses.mean_squared_error(self.x, self.dec)
         self.disc_loss = tf.reduce_mean(self.disc)
@@ -155,11 +163,11 @@ def data():
     points = np.random.permutation(font_dim*char_dim)
     for offset in range(0, len(points), batch_size):
         s = min(batch_size, len(points) - offset)
-        batch = np.zeros((s, input_dim), dtype=np.float32)
+        batch = np.zeros((s, input_dim_1, input_dim_2, channels), dtype=np.float32)
         label = np.zeros((s, char_dim), dtype=np.float32)
         for z in range(s):
             point = points[offset + z]
-            batch[z] = dataset[int(np.floor(point/char_dim))][point % char_dim].flatten()*1/255
+            batch[z] = np.reshape(dataset[int(np.floor(point/char_dim))][point % char_dim]*1/255, [input_dim_1, input_dim_2, channels])
             label[z][point % char_dim] = 1
         yield batch, label
 
@@ -169,12 +177,12 @@ def image_capture(epoch, niter):
         thingkern = np.random.normal(size=[1,latent_dim])*latent_stdev
         thinglabel = np.zeros([1,char_dim])
         thinglabel[0,j % char_dim] = 1
-        images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
+        images.append(model.infer(np.zeros([1,input_dim_1,input_dim_2,channels]),thinglabel,thingkern,gen=True))
     images = np.concatenate(images)
     h, c = plt.subplots(8, 8, figsize=(10, 10))
     h.subplots_adjust(wspace=0,hspace=0)
     for i in range(64):
-        c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+        c[int(np.floor(i/8))][i % 8].imshow(1-images[i], cmap=plt.get_cmap('gray'))
         c[int(np.floor(i/8))][i % 8].axis('off')
     savename = str('../images/rand/conv/fonts' + repr(epoch) + '_' + repr(niter) + '.png')
     h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
@@ -191,10 +199,10 @@ def image_capture_fon(epoch):
         for j in range(char_dim):
             thinglabel = np.zeros([1,char_dim])
             thinglabel[0,j] = 1
-            images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
+            images.append(model.infer(np.zeros([1,input_dim_1,input_dim_2,channels]),thinglabel,thingkern,gen=True))
         images = np.concatenate(images)
         for i in range(char_dim):
-            c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+            c[int(np.floor(i/8))][i % 8].imshow(1-images[i], cmap=plt.get_cmap('gray'))
         savename = str('../images/full/conv/fonts' + repr(epoch) + '_' + repr(i) + '.png')
         h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
     plt.close("all")
@@ -214,10 +222,10 @@ def gif_capture(epoch):
         for j in range(char_dim):
             thinglabel = np.zeros([1,char_dim])
             thinglabel[0,j] = 1
-            images.append(model.infer(np.zeros([1,input_dim]),thinglabel,thingkern,gen=True))
+            images.append(model.infer(np.zeros([1,input_dim_1,input_dim_2,channels]),thinglabel,thingkern,gen=True))
         images = np.concatenate(images)
         for i in range(char_dim):
-            c[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-images[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+            c[int(np.floor(i/8))][i % 8].imshow(1-images[i], cmap=plt.get_cmap('gray'))
         savename = str('../temp/' + repr(k) + '.png')
         h.savefig(savename, format='png', bbox_inches='tight', pad_inches=0, dpi=50)
     gifs = []
@@ -238,12 +246,12 @@ def reconstructor(font_num):
     label = np.zeros((char_dim, char_dim), dtype=np.float32)
     for i in range(char_dim):
         label[i][i] = 1
-        out.append(model.infer(np.reshape(dataset[font_num][i].flatten()*1/255,(1,input_dim)),np.reshape(label[i],(1,char_dim)),np.zeros([1,latent_dim]),gen=False))
+        out.append(model.infer(dataset[font_num][i]*1/255),np.reshape(label[i],(1,char_dim)),np.zeros([1,latent_dim]),gen=False))
     out = np.concatenate(out/np.max(out))
     f, a = plt.subplots(8, 8, figsize=(10, 10))
     g, b = plt.subplots(8, 8, figsize=(10, 10))
     for i in range(char_dim):
-        b[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-dataset[font_num][i]*1/255, (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
-        a[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-out[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
+        b[int(np.floor(i/8))][i % 8].imshow(1-dataset[font_num][i]*1/255, cmap=plt.get_cmap('gray'))
+        a[int(np.floor(i/8))][i % 8].imshow(1-out[i], cmap=plt.get_cmap('gray'))
     f.show()
     g.show()
