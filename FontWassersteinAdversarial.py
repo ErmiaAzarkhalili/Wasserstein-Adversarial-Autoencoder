@@ -47,36 +47,51 @@ class Model():
         self.ndisc = ndisc
         self.build_model()
     
+    def Encoder(inputs):
+        with slim.arg_scope([slim.fully_connected],
+                            weights_initializer=tf.random_normal_initializer(stddev=0.01),
+                            reuse=True):
+            output = slim.fully_connected(inputs, hidden_dim_1, scope='enc1')
+            output = slim.fully_connected(output, hidden_dim_2, scope='enc2')
+            output = slim.fully_connected(output, latent_dim, activation_fn=None, scope='enc3')    
+        return output
+    
+    def Decoder(inputs, labels):
+        with slim.arg_scope([slim.fully_connected],
+                            weights_initializer=tf.random_normal_initializer(stddev=0.01),
+                            reuse=True):
+            output = slim.fully_connected(inputs, hidden_dim_2, scope='dec1') + slim.fully_connected(labels, hidden_dim_2, scope='dec2')
+            output = slim.fully_connected(output, hidden_dim_1, scope='dec3')
+            output = slim.fully_connected(output, input_dim, activation_fn=tf.nn.sigmoid, scope='dec4')    
+        return output
+    
+    def Discriminator(inputs):
+        with slim.arg_scope([slim.fully_connected],
+                            weights_initializer=tf.random_normal_initializer(stddev=0.01),
+                            reuse=True):
+            output = slim.fully_connected(inputs, hidden_dim_2, scope='disc1')
+            output = slim.fully_connected(output, hidden_dim_1, scope='disc2')
+            output = slim.fully_connected(output, 1, activation_fn=None, scope='disc3')    
+        return output
+    
     def build_model(self):
         self.x = tf.placeholder(tf.float32, shape=[None,input_dim])
         self.labels = tf.placeholder(tf.float32, shape=[None,char_dim])
         self.sample = tf.placeholder(tf.float32, shape=[1,latent_dim])
 
-        with slim.arg_scope([slim.fully_connected],
-                      weights_initializer=tf.random_normal_initializer(stddev=0.01),
-                            reuse=True):
-            self.enc = slim.fully_connected(self.x, hidden_dim_1, scope='enc1')
-            self.enc = slim.fully_connected(self.enc, hidden_dim_2, scope='enc2')
-            self.latent = slim.fully_connected(self.enc, latent_dim, activation_fn=None, scope='enc3')
-            self.dec = slim.fully_connected(self.latent, hidden_dim_2, scope='dec1') + slim.fully_connected(self.labels, hidden_dim_2, scope='dec2')
-            self.dec = slim.fully_connected(self.dec, hidden_dim_1, scope='dec3')
-            self.dec = slim.fully_connected(self.dec, input_dim, activation_fn=tf.nn.sigmoid, scope='dec4')
-            self.disc_noise = tf.random_normal([tf.shape(self.x)[0],latent_dim])*latent_stdev
-            self.disc = slim.fully_connected(self.latent, hidden_dim_2, scope='disc1')
-            self.disc = slim.fully_connected(self.disc, hidden_dim_1, scope='disc2')
-            self.disc = slim.fully_connected(self.disc, 1, activation_fn=None, scope='disc3')
-            self.noise = slim.fully_connected(self.disc_noise, hidden_dim_2, scope='disc1')
-            self.noise = slim.fully_connected(self.noise, hidden_dim_1, scope='disc2')
-            self.noise = slim.fully_connected(self.noise, 1, activation_fn=None, scope='disc3')
-            self.alpha = tf.random_uniform(shape=[tf.shape(self.x)[0],1], minval=0.,maxval=1.)
-            self.difference = self.latent - self.disc_noise
-            self.interpolates = self.disc_noise + (self.alpha*self.difference)
-            self.interp_disc = slim.fully_connected(self.interpolates, hidden_dim_2, scope='disc1')
-            self.interp_disc = slim.fully_connected(self.interp_disc, hidden_dim_1, scope='disc2')
-            self.interp_disc = slim.fully_connected(self.interp_disc, 1, activation_fn=None, scope='disc3')
-            self.gen = slim.fully_connected(self.sample, hidden_dim_2, scope='dec1') + slim.fully_connected(self.labels, hidden_dim_2, scope='dec2')
-            self.gen = slim.fully_connected(self.gen, hidden_dim_1, scope='dec3')
-            self.gen = slim.fully_connected(self.gen, input_dim, activation_fn=tf.nn.sigmoid, scope='dec4')         
+        self.latent = self.Encoder(self.x)
+        self.dec = self.Decoder(self.latent, self.labels)
+        self.gen = self.Decoder(self.sample, self.labels)
+        
+        self.disc_noise = tf.random_normal([tf.shape(self.x)[0],latent_dim])*latent_stdev
+        self.disc = self.Discriminator(self.latent)
+        self.noise = self.Discriminator(self.disc_noise)
+
+        self.alpha = tf.random_uniform(shape=[tf.shape(self.x)[0],1], minval=0.,maxval=1.)
+        self.difference = self.latent - self.disc_noise
+        self.interpolates = self.disc_noise + (self.alpha*self.difference)
+        
+        self.interp_disc = self.Discriminator(self.interpolates)
 
         self.MSE = tf.losses.mean_squared_error(self.x, self.dec)
         self.disc_loss = tf.reduce_mean(self.disc)
