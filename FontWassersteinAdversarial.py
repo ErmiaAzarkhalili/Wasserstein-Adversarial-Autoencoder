@@ -27,7 +27,7 @@ latent_dim = 100
 latent_stdev = 5
 num_images_per_dim = 25
 num_epochs = 50000
-decay_epochs = [5000, 25000]
+decay_epochs = [100, 10000]
 decay_step = np.multiply(train_iter,decay_epochs)
 init_learning_rate = 3e-4
 decay_rate = .5
@@ -108,8 +108,8 @@ class Model():
             
         self.rec_enc = tf.train.AdamOptimizer(self.learning_rate, .9, .9, name='Rec_enc').minimize(self.MSE, var_list=enc_variables)
         self.rec_dec = tf.train.AdamOptimizer(self.learning_rate, .9, .9, name='Rec_dec').minimize(self.MSE, var_list=dec_variables),
-        self.reg_disc = tf.train.AdamOptimizer(self.learning_rate, .1, .9, name='Reg_disc').minimize(self.disc_loss, var_list=disc_variables),
-        self.reg_gen = tf.train.AdamOptimizer(self.learning_rate, .1, .9, name='Reg_gen').minimize(self.gen_loss, var_list=enc_variables, global_step=global_step)
+        self.reg_disc = tf.train.AdamOptimizer(self.learning_rate*10, .1, .9, name='Reg_disc').minimize(self.disc_loss, var_list=disc_variables),
+        self.reg_gen = tf.train.AdamOptimizer(self.learning_rate*10, .1, .9, name='Reg_gen').minimize(self.gen_loss, var_list=enc_variables, global_step=global_step)
 
         if not path:
             self.sess.run(tf.global_variables_initializer())
