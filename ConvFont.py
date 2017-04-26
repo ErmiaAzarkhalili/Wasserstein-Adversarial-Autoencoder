@@ -23,8 +23,8 @@ channels = 1
 batch_size = 100
 train_iter = int(font_dim*char_dim/batch_size)
 
-hidden_dim_1 = 32
-hidden_dim_2 = 128
+hidden_dim_1 = 16
+hidden_dim_2 = 32
 kernel = [9, 9]
 reconst_dim = (input_dim_1-(kernel[0]-1)*2)*(input_dim_2-(kernel[1]-1)*2)*hidden_dim_2
 
@@ -63,7 +63,8 @@ class Model():
             with slim.arg_scope([slim.conv2d, slim.convolution2d_transpose], kernel_size=kernel, stride=1, padding='VALID'):                                
                 self.enc = slim.conv2d(self.x, hidden_dim_1, scope='enc1')
                 self.enc = slim.conv2d(self.enc, hidden_dim_2, scope='enc2')
-                self.latent = slim.fully_connected(self.enc, latent_dim, activation_fn=None, scope='enc3')
+                self.enc_flat = tf.reshape(self.enc, [-1, reconst_dim])
+                self.latent = slim.fully_connected(self.enc_flat, latent_dim, activation_fn=None, scope='enc3')
                 self.dec = slim.fully_connected(self.latent, reconst_dim, scope='dec1') + slim.fully_connected(self.labels, reconst_dim, scope='dec2')
                 self.dec = tf.reshape(self.dec, tf.shape(self.enc))
                 self.dec = slim.convolution2d_transpose(self.dec, hidden_dim_1, scope='dec3')
@@ -87,7 +88,7 @@ class Model():
                 self.gen = slim.fully_connected(self.sample, reconst_dim, scope='dec1') + slim.fully_connected(self.labels, reconst_dim, scope='dec2')
                 self.gen = tf.reshape(self.gen, tf.shape(self.enc))
                 self.gen = slim.convolution2d_transpose(self.gen, hidden_dim_1, scope='dec3')
-                self.gen = slim.convolution2d_transpose(self.gen, channels, activation_fn=tf.nn.sigmoid, scope='dec4')         
+                self.gen = slim.convolution2d_transpose(self.gen, channels, activation_fn=tf.nn.sigmoid, scope='dec4')     
 
         self.MSE = tf.losses.mean_squared_error(self.x, self.dec)
         self.disc_loss = tf.reduce_mean(self.disc)
