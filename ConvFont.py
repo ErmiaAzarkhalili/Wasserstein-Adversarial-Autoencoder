@@ -71,18 +71,15 @@ class Model():
                 self.dec = slim.convolution2d_transpose(self.dec, channels, activation_fn=tf.nn.sigmoid, scope='dec4')
                 self.disc_noise = tf.random_normal([tf.shape(self.x)[0],latent_dim])*latent_stdev
                 self.disc = slim.fully_connected(self.latent, hidden_dim_2, scope='disc1')
-                self.disc = tf.reshape(self.disc, tf.shape(self.enc))
                 self.disc = slim.fully_connected(self.disc, hidden_dim_1, scope='disc2')
                 self.disc = slim.fully_connected(self.disc, 1, activation_fn=None, scope='disc3')
                 self.noise = slim.fully_connected(self.disc_noise, hidden_dim_2, scope='disc1')
-                self.noise = tf.reshape(self.noise, tf.shape(self.enc))
                 self.noise = slim.fully_connected(self.noise, hidden_dim_1, scope='disc2')
                 self.noise = slim.fully_connected(self.noise, 1, activation_fn=None, scope='disc3')
                 self.alpha = tf.random_uniform(shape=[tf.shape(self.x)[0],1], minval=0.,maxval=1.)
                 self.difference = self.latent - self.disc_noise
                 self.interpolates = self.disc_noise + (self.alpha*self.difference)
                 self.interp_disc = slim.fully_connected(self.interpolates, hidden_dim_2, scope='disc1')
-                self.interp_disc = tf.reshape(self.interp_disc, tf.shape(self.enc))
                 self.interp_disc = slim.fully_connected(self.interp_disc, hidden_dim_1, scope='disc2')
                 self.interp_disc = slim.fully_connected(self.interp_disc, 1, activation_fn=None, scope='disc3')
                 self.gen = slim.fully_connected(self.sample, reconst_dim, scope='dec1') + slim.fully_connected(self.labels, reconst_dim, scope='dec2')
