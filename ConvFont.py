@@ -139,7 +139,7 @@ class Model():
         if (self.niter % 100 == 0):
             print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
         if (self.niter % 1000 == 0):
-            self.saver.save(self.sess, path)
+            self.saver.save(self.sess, "../temp/conv_model.cpkt")
             image_capture(epoch, self.niter)
         self.niter = self.niter + 1
         sys.stdout.flush()
@@ -150,7 +150,7 @@ class Model():
             for x, y in self.data():
                 self.train_iter(x, y, i)
             image_capture_fon(i)
-            if (i % 5 == 0):
+            if (i % 5 == 1):
                 gif_capture(i)
                 
     def infer(self, x, y, z, gen=False):
@@ -246,7 +246,7 @@ def reconstructor(font_num):
     label = np.zeros((char_dim, char_dim), dtype=np.float32)
     for i in range(char_dim):
         label[i][i] = 1
-        out.append(model.infer(dataset[font_num][i]*1/255),np.reshape(label[i],(1,char_dim)),np.zeros([1,latent_dim]),gen=False))
+        out.append(model.infer(dataset[font_num][i]*1/255,np.reshape(label[i],(1,char_dim)),np.zeros([1,latent_dim]),gen=False))
     out = np.concatenate(out/np.max(out))
     f, a = plt.subplots(8, 8, figsize=(10, 10))
     g, b = plt.subplots(8, 8, figsize=(10, 10))
