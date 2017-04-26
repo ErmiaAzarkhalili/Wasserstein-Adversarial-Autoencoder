@@ -24,7 +24,7 @@ hidden_dim_1 = 5000
 hidden_dim_2 = 5000
 
 latent_dim = 100
-latent_stdev = 5
+latent_stdev = 15
 num_images_per_dim = 25
 num_epochs = 50000
 decay_epochs = [100, 10000]
