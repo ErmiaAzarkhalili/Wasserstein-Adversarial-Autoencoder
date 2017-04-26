@@ -29,7 +29,7 @@ kernel = [9, 9]
 reconst_dim = (input_dim_1-(kernel[0]-1)*2)*(input_dim_2-(kernel[1]-1)*2)*hidden_dim_2
 
 latent_dim = 100
-latent_stdev = 10
+latent_stdev = 15
 num_images_per_dim = 25
 num_epochs = 50000
 decay_epochs = [100, 10000]
