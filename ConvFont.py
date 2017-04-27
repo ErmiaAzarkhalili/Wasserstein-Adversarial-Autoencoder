@@ -33,7 +33,7 @@ reconst_dim = reconst_dim_1*reconst_dim_2*hidden_dim_2
 
 latent_dim = 128
 latent_stdev = 20
-fc_dim = latent_dim*10
+fc_dim = latent_dim*5
 num_epochs = 50000
 decay_epochs = [100, 10000]
 decay_step = np.multiply(train_iter,decay_epochs)
@@ -56,7 +56,7 @@ class Model():
         self.build_model()
     
     def Encoder(self, inputs):
-        with slim.arg_scope([slim.conv2d, slim.fully_connected],
+        with slim.arg_scope([slim.conv2d, slim.fully_connected], activation_fn=tf.nn.elu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             with slim.arg_scope([slim.conv2d], kernel_size=kernel, stride=stride, padding='VALID'):
@@ -67,7 +67,7 @@ class Model():
         return output
     
     def Decoder(self, inputs, labels):
-        with slim.arg_scope([slim.convolution2d_transpose, slim.fully_connected],
+        with slim.arg_scope([slim.convolution2d_transpose, slim.fully_connected], activation_fn=tf.nn.elu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             with slim.arg_scope([slim.convolution2d_transpose], kernel_size=kernel, stride=stride, padding='VALID'):
@@ -78,7 +78,7 @@ class Model():
         return output
     
     def Discriminator(self, inputs):
-        with slim.arg_scope([slim.fully_connected],
+        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
                 output = slim.fully_connected(inputs, fc_dim, scope='disc1')
