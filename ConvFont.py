@@ -33,6 +33,7 @@ reconst_dim = reconst_dim_1*reconst_dim_2*hidden_dim_2
 
 latent_dim = 128
 latent_stdev = 20
+fc_dim = latent_dim*10
 num_epochs = 50000
 decay_epochs = [100, 10000]
 decay_step = np.multiply(train_iter,decay_epochs)
@@ -81,12 +82,9 @@ class Model():
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             with slim.arg_scope([slim.convolution2d_transpose], kernel_size=kernel, stride=stride, padding='VALID'):
-                output = slim.fully_connected(inputs, reconst_dim, scope='disc1')
-                output = tf.reshape(output, [-1, reconst_dim_1, reconst_dim_2, hidden_dim_2])
-                output = slim.convolution2d_transpose(output, hidden_dim_1, scope='disc2')
-                output = slim.convolution2d_transpose(output, channels, scope='disc3')
-                output = tf.reshape(output, [-1, input_dim*channels])
-                output = slim.fully_connected(output, 1, activation_fn=None, scope='disc4')
+                output = slim.fully_connected(inputs, fc_dim, scope='disc1')
+                output = slim.fully_connected(output, fc_dim, scope='disc2')
+                output = slim.fully_connected(output, 1, activation_fn=None, scope='disc3')
         return output
     
     def build_model(self):
