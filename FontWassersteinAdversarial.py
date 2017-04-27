@@ -48,7 +48,7 @@ class Model():
         self.build_model()
     
     def Encoder(self, inputs):
-        with slim.arg_scope([slim.fully_connected],
+        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             output = slim.fully_connected(inputs, hidden_dim_1, scope='enc1')
@@ -57,7 +57,7 @@ class Model():
         return output
     
     def Decoder(self, inputs, labels):
-        with slim.arg_scope([slim.fully_connected],
+        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             output = slim.fully_connected(inputs, hidden_dim_2, scope='dec1') + slim.fully_connected(labels, hidden_dim_2, scope='dec2')
@@ -66,7 +66,7 @@ class Model():
         return output
     
     def Discriminator(self, inputs):
-        with slim.arg_scope([slim.fully_connected],
+        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             output = slim.fully_connected(inputs, hidden_dim_2, scope='disc1')
