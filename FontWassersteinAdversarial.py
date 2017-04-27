@@ -24,7 +24,7 @@ hidden_dim_1 = 5000
 hidden_dim_2 = 5000
 
 latent_dim = 100
-latent_stdev = 15
+latent_stdev = 20
 num_images_per_dim = 25
 num_epochs = 50000
 decay_epochs = [100, 10000]
@@ -47,7 +47,7 @@ class Model():
         self.ndisc = ndisc
         self.build_model()
     
-    def Encoder(inputs):
+    def Encoder(self, inputs):
         with slim.arg_scope([slim.fully_connected],
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
@@ -56,7 +56,7 @@ class Model():
             output = slim.fully_connected(output, latent_dim, activation_fn=None, scope='enc3')    
         return output
     
-    def Decoder(inputs, labels):
+    def Decoder(self, inputs, labels):
         with slim.arg_scope([slim.fully_connected],
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
@@ -65,7 +65,7 @@ class Model():
             output = slim.fully_connected(output, input_dim, activation_fn=tf.nn.sigmoid, scope='dec4')    
         return output
     
-    def Discriminator(inputs):
+    def Discriminator(self, inputs):
         with slim.arg_scope([slim.fully_connected],
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
