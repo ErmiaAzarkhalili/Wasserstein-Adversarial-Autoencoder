@@ -25,7 +25,7 @@ train_iter = int(font_dim*char_dim/batch_size)
 
 hidden_dim_1 = 16
 hidden_dim_2 = 32
-kernel = [9, 9]
+kernel = [17, 17]
 stride = 1
 reconst_dim_1 = input_dim_1-(kernel[0]-1)*2
 reconst_dim_2 = input_dim_2-(kernel[1]-1)*2
