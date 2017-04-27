@@ -27,13 +27,13 @@ hidden_dim_1 = 16
 hidden_dim_2 = 32
 kernel = [9, 9]
 stride = 1
-reconst_dim_1 = input_dim_1-(kernel[0]-1)*2
-reconst_dim_2 = input_dim_2-(kernel[1]-1)*2
+reconst_dim_1 = input_dim_1-(kernel[0]-1)*4
+reconst_dim_2 = input_dim_2-(kernel[1]-1)*4
 reconst_dim = reconst_dim_1*reconst_dim_2*hidden_dim_2
 
 latent_dim = 100
-latent_stdev = 15
-num_images_per_dim = 25
+latent_stdev = 20
+fc_dim = latent_dim*10
 num_epochs = 50000
 decay_epochs = [100, 10000]
 decay_step = np.multiply(train_iter,decay_epochs)
@@ -55,39 +55,42 @@ class Model():
         self.ndisc = ndisc
         self.build_model()
     
-    def Encoder(inputs):
-        with slim.arg_scope([slim.conv_2d, slim.convolution2d_transpose, slim.fully_connected],
+    def Encoder(self, inputs):
+        with slim.arg_scope([slim.conv2d, slim.fully_connected],
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
-            with slim.arg_scope([slim.conv_2d, slim.convolution2d_transpose], kernel_size=kernel, stride=stride, padding='VALID'):
-                output = slim.conv_2d(inputs, hidden_dim_1, scope='enc1')
-                output = slim.conv_2d(output, hidden_dim_2, scope='enc2')
-                output = tf.reshape(output, [-1])
-                output = slim.fully_connected(output, latent_dim, activation_fn=None, scope='enc3')    
+            with slim.arg_scope([slim.conv2d], kernel_size=kernel, stride=stride, padding='VALID'):
+                output = slim.conv2d(inputs, hidden_dim_1, scope='enc1')
+                output = slim.conv2d(output, hidden_dim_2, scope='enc4')
+                output = tf.reshape(output, [-1, reconst_dim*channels])
+                output = slim.fully_connected(output, fc_dim, scope='enc5')
+                output = slim.fully_connected(output, latent_dim, activation_fn=None, scope='enc6')
         return output
     
-    def Decoder(inputs, labels):
-        with slim.arg_scope([slim.conv_2d, slim.convolution2d_transpose, slim.fully_connected],
+    def Decoder(self, inputs, labels):
+        with slim.arg_scope([slim.convolution2d_transpose, slim.fully_connected],
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
-            with slim.arg_scope([slim.conv_2d, slim.convolution2d_transpose], kernel_size=kernel, stride=stride, padding='VALID'):
-                output = slim.fully_connected(inputs, reconst_dim, scope='dec1') + slim.fully_connected(labels, reconst_dim, scope='dec2')
+            with slim.arg_scope([slim.convolution2d_transpose], kernel_size=kernel, stride=stride, padding='VALID'):
+                output = slim.fully_connected(inputs, fc_dim, scope='dec1') + slim.fully_connected(labels, fc_dim, scope='dec2')
+                output = slim.fully_connected(output, reconst_dim, scope='dec3')
                 output = tf.reshape(output, [-1, reconst_dim_1, reconst_dim_2, hidden_dim_2])
-                output = slim.convolution2d_transpose(output, hidden_dim_1, scope='disc2')
-                output = slim.convolution2d_transpose(output, channels, scope='disc3')
+                output = slim.convolution2d_transpose(output, hidden_dim_1, scope='dec6')
+                output = slim.convolution2d_transpose(output, channels, scope='dec7')
         return output
     
-    def Discriminator(inputs):
-        with slim.arg_scope([slim.conv_2d, slim.convolution2d_transpose, slim.fully_connected],
+    def Discriminator(self, inputs):
+        with slim.arg_scope([slim.convolution2d_transpose, slim.fully_connected],
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
-            with slim.arg_scope([slim.conv_2d, slim.convolution2d_transpose], kernel_size=kernel, stride=stride, padding='VALID'):
-                output = slim.fully_connected(inputs, reconst_dim, scope='disc1')
+            with slim.arg_scope([slim.convolution2d_transpose], kernel_size=kernel, stride=stride, padding='VALID'):
+                output = slim.fully_connected(inputs, fc_dim, scope='disc1')
+                output = slim.fully_connected(output, reconst_dim, scope='disc2')
                 output = tf.reshape(output, [-1, reconst_dim_1, reconst_dim_2, hidden_dim_2])
-                output = slim.convolution2d_transpose(output, hidden_dim_1, scope='disc2')
-                output = slim.convolution2d_transpose(output, channels, scope='disc3')
-                output = tf.reshape(output, [-1])
-                output = slim.fully_connected(output, 1, activation_fn=None, scope='disc4')
+                output = slim.convolution2d_transpose(output, hidden_dim_1, scope='disc5')
+                output = slim.convolution2d_transpose(output, channels, scope='disc6')
+                output = tf.reshape(output, [-1, input_dim*channels])
+                output = slim.fully_connected(output, 1, activation_fn=None, scope='disc7')
         return output
     
     def build_model(self):
@@ -156,7 +159,7 @@ class Model():
         for _ in range(self.ndisc):
             disc_loss, _ = self.sess.run([self.disc_loss, self.reg_disc], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
         gen_loss, _ = self.sess.run([self.gen_loss, self.reg_gen], feed_dict={self.x : x, self.labels : y, self.sample : np.zeros([1,latent_dim])})
-        if (self.niter % 100 == 0):
+        if (self.niter % 1 == 0):
             print('MSE: {}, disc_loss: {},  gen_loss: {}, epoch: {}'.format(MSE,disc_loss,gen_loss,epoch))
         if (self.niter % 1000 == 0):
             self.saver.save(self.sess, "../temp/conv_model.cpkt")
