@@ -24,7 +24,7 @@ hidden_dim_1 = 5000
 hidden_dim_2 = 5000
 
 latent_dim = 128
-latent_stdev = 20
+latent_stdev = 5
 num_images_per_dim = 25
 num_epochs = 50000
 decay_epochs = [100, 10000]
@@ -48,7 +48,7 @@ class Model():
         self.build_model()
     
     def Encoder(self, inputs):
-        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
+        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             output = slim.fully_connected(inputs, hidden_dim_1, scope='enc1')
@@ -57,7 +57,7 @@ class Model():
         return output
     
     def Decoder(self, inputs, labels):
-        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
+        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             output = slim.fully_connected(inputs, hidden_dim_2, scope='dec1') + slim.fully_connected(labels, hidden_dim_2, scope='dec2')
@@ -66,7 +66,7 @@ class Model():
         return output
     
     def Discriminator(self, inputs):
-        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.elu,
+        with slim.arg_scope([slim.fully_connected], activation_fn=tf.nn.relu,
                             weights_initializer=tf.random_normal_initializer(stddev=0.01),
                             reuse=True):
             output = slim.fully_connected(inputs, hidden_dim_2, scope='disc1')
@@ -236,15 +236,8 @@ def gif_capture(epoch):
     for k in range(gif_len):
         readname = str('../temp/' + repr(k) + '.png')
         gifs.append(imageio.imread(readname))
-    imageio.mimsave('../gifs/fonts' + repr(epoch) + '.gif', gifs)        
-
-tf.set_random_seed(13223)
-sess = tf.Session()
-model = Model(sess, data, num_epochs, init_learning_rate, lambduh, ndisc)
-model.train_init(path)
-if not path:
-    model.train()
-
+    imageio.mimsave('../gifs/fonts' + repr(epoch) + '.gif', gifs) 
+    
 def reconstructor(font_num):
     out = []
     label = np.zeros((char_dim, char_dim), dtype=np.float32)
@@ -259,3 +252,10 @@ def reconstructor(font_num):
         a[int(np.floor(i/8))][i % 8].imshow(np.reshape(1-out[i], (dataset.shape[2], dataset.shape[3])), cmap=plt.get_cmap('gray'))
     f.show()
     g.show()
+
+tf.set_random_seed(13223)
+sess = tf.Session()
+model = Model(sess, data, num_epochs, init_learning_rate, lambduh, ndisc)
+model.train_init(path)
+if not path:
+    model.train()
